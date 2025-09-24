@@ -1,0 +1,6 @@
+{
+  "hotkey": "ctrl+shift+space",
+  "mouse_button": "x1",
+  "start_on_launch": false,
+  "log_file": "logs/whisper-ui.log"
+}
