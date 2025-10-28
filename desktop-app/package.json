@@ -1,0 +1,51 @@
+{
+  "name": "whisper-desktop-voice-typing",
+  "version": "1.0.0",
+  "description": "Always-on voice typing desktop app with local Whisper transcription",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build:linux": "electron-builder --linux",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac"
+  },
+  "keywords": [
+    "whisper",
+    "voice-typing",
+    "speech-to-text",
+    "electron",
+    "desktop"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "electron": "^28.0.0",
+    "electron-localshortcut": "^3.2.1",
+    "axios": "^1.6.0",
+    "node-key-sender": "^1.0.11"
+  },
+  "devDependencies": {
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.whisper.voicetyping",
+    "productName": "Whisper Voice Typing",
+    "files": [
+      "**/*",
+      "!**/*.md"
+    ],
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Utility"
+    },
+    "win": {
+      "target": ["nsis", "portable"]
+    },
+    "mac": {
+      "target": ["dmg", "zip"],
+      "category": "public.app-category.productivity"
+    }
+  }
+}
