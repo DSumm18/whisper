@@ -1,0 +1,31 @@
+{
+  "name": "whisper-stt",
+  "version": "1.0.0",
+  "description": "Reusable speech-to-text library with Browser API and Whisper fallback",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "test": "jest"
+  },
+  "keywords": [
+    "speech-to-text",
+    "whisper",
+    "stt",
+    "voice-typing",
+    "browser-api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-typescript": "^11.1.5",
+    "rollup": "^4.9.0",
+    "typescript": "^5.3.3"
+  }
+}

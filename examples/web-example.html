@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Whisper STT - Web Example</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+    }
+
+    p {
+      color: #666;
+      margin-bottom: 30px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      flex: 1;
+      min-width: 120px;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    button.recording {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      padding: 15px;
+      border: 2px solid #e5e7eb;
+      border-radius: 10px;
+      font-size: 16px;
+      resize: vertical;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .status {
+      margin-top: 15px;
+      padding: 10px 15px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .status.info {
+      background: #dbeafe;
+      color: #1e40af;
+      display: block;
+    }
+
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+      display: block;
+    }
+
+    .status.success {
+      background: #d1fae5;
+      color: #065f46;
+      display: block;
+    }
+
+    .options {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #f9fafb;
+      border-radius: 10px;
+    }
+
+    .options label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: #374151;
+    }
+
+    .options select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎤 Voice Typing Demo</h1>
+    <p>Try the speech-to-text library with live voice input!</p>
+
+    <div class="options">
+      <label for="cleanup">Text Cleanup Method:</label>
+      <select id="cleanup">
+        <option value="basic">Basic (Free)</option>
+        <option value="languagetool">LanguageTool (Free)</option>
+        <option value="claude">Claude API (Paid)</option>
+        <option value="openai">OpenAI GPT (Paid)</option>
+      </select>
+    </div>
+
+    <div class="controls">
+      <button id="startBtn">Start Speaking</button>
+      <button id="stopBtn" disabled>Stop</button>
+      <button id="clearBtn">Clear</button>
+    </div>
+
+    <textarea id="output" placeholder="Your transcribed text will appear here..."></textarea>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <script type="module">
+    // In production, import from npm package
+    // import { init, startSpeechToText, cleanup, createContinuousSession } from 'whisper-stt';
+
+    // For demo, we'll use inline implementation
+    let recognition;
+    let isRecording = false;
+
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const output = document.getElementById('output');
+    const status = document.getElementById('status');
+    const cleanupSelect = document.getElementById('cleanup');
+
+    function showStatus(message, type = 'info') {
+      status.textContent = message;
+      status.className = `status ${type}`;
+    }
+
+    function clearStatus() {
+      status.className = 'status';
+      status.textContent = '';
+    }
+
+    // Check if browser supports Speech Recognition
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      showStatus('⚠️ Speech recognition not supported in this browser. Try Chrome or Edge.', 'error');
+      startBtn.disabled = true;
+    }
+
+    startBtn.addEventListener('click', () => {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      let finalTranscript = '';
+
+      recognition.onstart = () => {
+        isRecording = true;
+        startBtn.disabled = true;
+        startBtn.classList.add('recording');
+        stopBtn.disabled = false;
+        showStatus('🎤 Listening... Speak now!', 'info');
+      };
+
+      recognition.onresult = (event) => {
+        let interimTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript + ' ';
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        output.value = finalTranscript + interimTranscript;
+      };
+
+      recognition.onend = async () => {
+        isRecording = false;
+        startBtn.disabled = false;
+        startBtn.classList.remove('recording');
+        stopBtn.disabled = true;
+        showStatus('✨ Processing...', 'info');
+
+        // Clean up text
+        try {
+          const cleaned = await cleanupText(finalTranscript.trim());
+          output.value = cleaned;
+          showStatus('✓ Done! Text has been cleaned up.', 'success');
+          setTimeout(clearStatus, 3000);
+        } catch (error) {
+          showStatus('⚠️ Cleanup failed, showing raw transcript', 'error');
+          setTimeout(clearStatus, 3000);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        isRecording = false;
+        startBtn.disabled = false;
+        startBtn.classList.remove('recording');
+        stopBtn.disabled = true;
+
+        let errorMsg = 'Error: ';
+        if (event.error === 'no-speech') {
+          errorMsg += 'No speech detected. Please try again.';
+        } else if (event.error === 'audio-capture') {
+          errorMsg += 'No microphone found or access denied.';
+        } else if (event.error === 'not-allowed') {
+          errorMsg += 'Microphone permission denied.';
+        } else {
+          errorMsg += event.error;
+        }
+
+        showStatus(errorMsg, 'error');
+      };
+
+      recognition.start();
+    });
+
+    stopBtn.addEventListener('click', () => {
+      if (recognition && isRecording) {
+        recognition.stop();
+      }
+    });
+
+    clearBtn.addEventListener('click', () => {
+      output.value = '';
+      clearStatus();
+    });
+
+    // Basic text cleanup function
+    async function cleanupText(text) {
+      const method = cleanupSelect.value;
+
+      if (method === 'basic') {
+        return basicCleanup(text);
+      }
+
+      if (method === 'languagetool') {
+        return await languageToolCleanup(text);
+      }
+
+      // For Claude/OpenAI, you'd need API keys
+      showStatus('⚠️ API cleanup requires configuration', 'error');
+      return basicCleanup(text);
+    }
+
+    function basicCleanup(text) {
+      if (!text) return text;
+
+      text = text.trim();
+      text = text.charAt(0).toUpperCase() + text.slice(1);
+
+      if (!/[.!?]$/.test(text)) {
+        text += '.';
+      }
+
+      return text;
+    }
+
+    async function languageToolCleanup(text) {
+      try {
+        const response = await fetch('https://api.languagetool.org/v2/check', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            text: text,
+            language: 'en-US'
+          })
+        });
+
+        const data = await response.json();
+        let cleaned = text;
+
+        // Apply corrections
+        for (let i = data.matches.length - 1; i >= 0; i--) {
+          const match = data.matches[i];
+          if (match.replacements && match.replacements.length > 0) {
+            const replacement = match.replacements[0].value;
+            cleaned =
+              cleaned.substring(0, match.offset) +
+              replacement +
+              cleaned.substring(match.offset + match.length);
+          }
+        }
+
+        return cleaned;
+      } catch (error) {
+        console.error('LanguageTool error:', error);
+        return basicCleanup(text);
+      }
+    }
+  </script>
+</body>
+</html>
